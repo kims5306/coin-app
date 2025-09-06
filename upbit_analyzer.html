@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>업비트 코인 실시간 분석기</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <!-- 헤더 섹션 -->
+      <header class="header">
+        <div class="header-content">
+          <h1>🚀 업비트 코인 실시간 분석기</h1>
+          <p>실시간 데이터로 코인 시장을 분석하세요</p>
+        </div>
+      </header>
+
+      <!-- 조회 조건 섹션 -->
+      <section class="controls-section">
+        <div class="controls-container">
+          <div class="control-group">
+            <label for="marketSelect">코인 선택</label>
+            <select id="marketSelect">
+              <option value="KRW-BTC">비트코인 (BTC)</option>
+              <option value="KRW-ETH">이더리움 (ETH)</option>
+              <option value="KRW-XRP">리플 (XRP)</option>
+              <option value="KRW-ADA">에이다 (ADA)</option>
+              <option value="KRW-DOT">폴카닷 (DOT)</option>
+              <option value="KRW-LINK">체인링크 (LINK)</option>
+              <option value="KRW-BCH">비트코인캐시 (BCH)</option>
+              <option value="KRW-LTC">라이트코인 (LTC)</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="periodSelect">조회 기간</label>
+            <select id="periodSelect">
+              <option value="7">최근 7일</option>
+              <option value="14">최근 14일</option>
+              <option value="30" selected>최근 30일</option>
+              <option value="60">최근 60일</option>
+              <option value="90">최근 90일</option>
+              <option value="custom">사용자 지정</option>
+            </select>
+          </div>
+
+          <div
+            class="control-group custom-date"
+            id="customDateGroup"
+            style="display: none"
+          >
+            <label for="startDate">시작일</label>
+            <input type="date" id="startDate" />
+          </div>
+
+          <div
+            class="control-group custom-date"
+            id="customDateGroup2"
+            style="display: none"
+          >
+            <label for="endDate">종료일</label>
+            <input type="date" id="endDate" />
+          </div>
+
+          <div class="control-group">
+            <label>&nbsp;</label>
+            <button id="searchBtn" class="search-btn">🔍 데이터 조회</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 로딩 및 상태 섹션 -->
+      <section class="status-section">
+        <div class="loading" id="loadingIndicator" style="display: none">
+          <div class="loading-spinner"></div>
+          <p>데이터를 조회하고 있습니다...</p>
+        </div>
+
+        <div class="market-info" id="marketInfo" style="display: none">
+          <div class="info-card">
+            <h3 id="coinName">비트코인 (BTC)</h3>
+            <div class="price-info">
+              <span class="current-price" id="currentPrice">-</span>
+              <span class="price-change" id="priceChange">-</span>
+              <span class="change-rate" id="changeRate">-</span>
+            </div>
+            <div class="market-stats">
+              <div class="stat-item">
+                <span class="stat-label">24h 고가</span>
+                <span class="stat-value" id="highPrice">-</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">24h 저가</span>
+                <span class="stat-value" id="lowPrice">-</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">24h 거래량</span>
+                <span class="stat-value" id="volume">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 차트 섹션 -->
+      <section class="charts-section" id="chartsSection" style="display: none">
+        <div class="charts-grid">
+          <!-- 가격 차트 -->
+          <div class="chart-container">
+            <div class="chart-header">
+              <h3>📈 가격 차트</h3>
+              <div class="chart-info">
+                <span>시가 • 고가 • 저가 • 종가</span>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="priceChart"></canvas>
+            </div>
+          </div>
+
+          <!-- 거래량 차트 -->
+          <div class="chart-container">
+            <div class="chart-header">
+              <h3>📊 거래량 차트</h3>
+              <div class="chart-info">
+                <span>일별 거래량 추이</span>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="volumeChart"></canvas>
+            </div>
+          </div>
+
+          <!-- 변동률 차트 -->
+          <div class="chart-container">
+            <div class="chart-header">
+              <h3>📉 변동률 차트</h3>
+              <div class="chart-info">
+                <span>일별 가격 변동률</span>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="changeRateChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 분석 섹션 -->
+      <section
+        class="analysis-section"
+        id="analysisSection"
+        style="display: none"
+      >
+        <div class="analysis-container">
+          <button id="coinAnalysisBtn" class="analysis-btn">
+            🔬 코인 정보/분석 보기
+          </button>
+
+          <div
+            class="analysis-content"
+            id="analysisContent"
+            style="display: none"
+          >
+            <div class="analysis-grid">
+              <div class="analysis-card">
+                <h4>📊 기술적 분석</h4>
+                <div class="analysis-item">
+                  <span class="label">이동평균선(7일):</span>
+                  <span class="value" id="ma7">-</span>
+                </div>
+                <div class="analysis-item">
+                  <span class="label">이동평균선(30일):</span>
+                  <span class="value" id="ma30">-</span>
+                </div>
+                <div class="analysis-item">
+                  <span class="label">변동성(표준편차):</span>
+                  <span class="value" id="volatility">-</span>
+                </div>
+                <div class="analysis-item">
+                  <span class="label">RSI:</span>
+                  <span class="value" id="rsi">-</span>
+                </div>
+              </div>
+
+              <div class="analysis-card">
+                <h4>💹 가격 분석</h4>
+                <div class="analysis-item">
+                  <span class="label">기간 최고가:</span>
+                  <span class="value" id="periodHigh">-</span>
+                </div>
+                <div class="analysis-item">
+                  <span class="label">기간 최저가:</span>
+                  <span class="value" id="periodLow">-</span>
+                </div>
+                <div class="analysis-item">
+                  <span class="label">평균 가격:</span>
+                  <span class="value" id="avgPrice">-</span>
+                </div>
+                <div class="analysis-item">
+                  <span class="label">총 수익률:</span>
+                  <span class="value" id="totalReturn">-</span>
+                </div>
+              </div>
+
+              <div class="analysis-card">
+                <h4>📈 거래량 분석</h4>
+                <div class="analysis-item">
+                  <span class="label">평균 거래량:</span>
+                  <span class="value" id="avgVolume">-</span>
+                </div>
+                <div class="analysis-item">
+                  <span class="label">최대 거래량:</span>
+                  <span class="value" id="maxVolume">-</span>
+                </div>
+                <div class="analysis-item">
+                  <span class="label">거래량 증감:</span>
+                  <span class="value" id="volumeChange">-</span>
+                </div>
+                <div class="analysis-item">
+                  <span class="label">거래 활성도:</span>
+                  <span class="value" id="tradingActivity">-</span>
+                </div>
+              </div>
+
+              <div class="analysis-card full-width">
+                <h4>🎯 종합 분석</h4>
+                <div class="summary-content" id="summaryAnalysis">
+                  <p>데이터를 조회한 후 분석 정보가 표시됩니다.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 푸터 -->
+      <footer class="footer">
+        <p>
+          &copy; 2024 업비트 코인 분석기. 업비트 API를 활용한 실시간 데이터 분석
+          도구
+        </p>
+      </footer>
+    </div>
+
+    <!-- 스크립트 로드 -->
+    <script src="script.js"></script>
+  </body>
+</html>

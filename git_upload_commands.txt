@@ -1,0 +1,24 @@
+# Git으로 GitHub에 업로드하는 명령어들
+
+# 1. Git 저장소 초기화
+git init
+
+# 2. 모든 파일 스테이징
+git add .
+
+# 3. 첫 번째 커밋
+git commit -m "업비트 코인 실시간 분석기 - 초기 버전"
+
+# 4. 기본 브랜치를 main으로 설정
+git branch -M main
+
+# 5. 원격 저장소 추가
+git remote add origin https://github.com/kims5306/coin-app.git
+
+# 6. GitHub에 푸시 (처음에는 -u 옵션 사용)
+git push -u origin main
+
+# 향후 업데이트 시 사용할 명령어들:
+# git add .
+# git commit -m "업데이트 메시지"
+# git push

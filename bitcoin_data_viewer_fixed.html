@@ -1,0 +1,2578 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>비트코인 (KRW-BTC) 데이터 뷰어 & 차트 분석</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .header p {
+        font-size: 1.2em;
+        opacity: 0.9;
+      }
+
+      .controls {
+        padding: 20px 30px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .control-group label {
+        font-weight: 600;
+        color: #495057;
+        font-size: 0.9em;
+      }
+
+      .control-group input,
+      .control-group select {
+        padding: 8px 12px;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+      }
+
+      .control-group input:focus,
+      .control-group select:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+      }
+
+      .stats {
+        padding: 20px 30px;
+        background: #f8f9fa;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+      }
+
+      .stat-card {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .stat-card h3 {
+        color: #6c757d;
+        font-size: 0.9em;
+        margin-bottom: 5px;
+      }
+
+      .stat-card .value {
+        font-size: 1.5em;
+        font-weight: 700;
+        color: #495057;
+      }
+
+      .table-container {
+        padding: 30px;
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+      }
+
+      th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 10px;
+        text-align: center;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      td {
+        padding: 12px 10px;
+        text-align: center;
+        border-bottom: 1px solid #f1f3f4;
+        vertical-align: middle;
+      }
+
+      tr:hover {
+        background: #f8f9fa;
+        transform: scale(1.01);
+        transition: all 0.2s;
+      }
+
+      .price {
+        font-weight: 600;
+        font-size: 1.1em;
+      }
+
+      .positive {
+        color: #e74c3c;
+        background: #fff5f5;
+        padding: 4px 8px;
+        border-radius: 6px;
+      }
+
+      .negative {
+        color: #3498db;
+        background: #f0f8ff;
+        padding: 4px 8px;
+        border-radius: 6px;
+      }
+
+      .volume {
+        color: #8e44ad;
+        font-weight: 500;
+      }
+
+      .date {
+        color: #2c3e50;
+        font-family: "Courier New", monospace;
+        font-size: 0.9em;
+      }
+
+      .pagination {
+        padding: 20px 30px;
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .pagination button {
+        padding: 10px 15px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+
+      .pagination button:hover {
+        background: #0056b3;
+      }
+
+      .pagination button:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 50px;
+        font-size: 1.2em;
+        color: #6c757d;
+      }
+
+      .chart-section {
+        padding: 30px;
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+      }
+
+      .chart-buttons {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .chart-btn {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+      }
+
+      .chart-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      .chart-btn.active {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        box-shadow: 0 6px 20px rgba(240, 147, 251, 0.4);
+      }
+
+      .chart-container {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        margin-top: 20px;
+        display: none;
+      }
+
+      .chart-container.active {
+        display: block;
+      }
+
+      .chart-title {
+        text-align: center;
+        font-size: 1.5em;
+        color: #495057;
+        margin-bottom: 20px;
+        font-weight: 700;
+      }
+
+      .chart-wrapper {
+        position: relative;
+        height: 400px;
+        width: 100%;
+      }
+
+      .apply-btn, .reset-btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        min-width: 120px;
+      }
+
+      .apply-btn {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
+      }
+
+      .apply-btn:hover {
+        background: linear-gradient(135deg, #218838 0%, #1da388 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+      }
+
+      .reset-btn {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        color: white;
+        box-shadow: 0 2px 10px rgba(108, 117, 125, 0.3);
+      }
+
+      .reset-btn:hover {
+        background: linear-gradient(135deg, #5a6268 0%, #3d4449 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4);
+      }
+
+      .date-range-info {
+        background: #e3f2fd;
+        border: 1px solid #90caf9;
+        border-radius: 8px;
+        padding: 10px 15px;
+        margin: 10px 0;
+        color: #1565c0;
+        font-size: 14px;
+        text-align: center;
+        display: none;
+      }
+
+      .date-range-info.active {
+        display: block;
+      }
+
+      @media (max-width: 768px) {
+        .controls {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .stats {
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+
+        .header h1 {
+          font-size: 2em;
+        }
+
+        table {
+          font-size: 0.9em;
+        }
+
+        th,
+        td {
+          padding: 8px 5px;
+        }
+
+        .chart-buttons {
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .chart-btn {
+          padding: 10px 20px;
+          font-size: 14px;
+        }
+
+        .chart-wrapper {
+          height: 300px;
+        }
+
+        .apply-btn, .reset-btn {
+          padding: 10px 16px;
+          font-size: 13px;
+          min-width: 100px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🚀 비트코인 (KRW-BTC) 데이터 분석</h1>
+        <p>업비트 일봉 차트 데이터 (100일간) - 인터랙티브 차트 분석 도구</p>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <label for="startDate">시작 날짜</label>
+          <input type="date" id="startDate" />
+        </div>
+        <div class="control-group">
+          <label for="endDate">종료 날짜</label>
+          <input type="date" id="endDate" />
+        </div>
+        <div class="control-group">
+          <label>&nbsp;</label>
+          <button type="button" id="applyDateRange" class="apply-btn">
+            📅 기간 적용
+          </button>
+        </div>
+        <div class="control-group">
+          <label for="sortBy">정렬 기준</label>
+          <select id="sortBy">
+            <option value="date_desc">날짜 (최신순)</option>
+            <option value="date_asc">날짜 (오래된순)</option>
+            <option value="price_high">종가 (높은순)</option>
+            <option value="price_low">종가 (낮은순)</option>
+            <option value="volume_high">거래량 (높은순)</option>
+            <option value="volume_low">거래량 (낮은순)</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="priceFilter">가격 필터</label>
+          <input
+            type="number"
+            id="priceFilter"
+            placeholder="최소 가격"
+            step="1000"
+          />
+        </div>
+        <div class="control-group">
+          <label>&nbsp;</label>
+          <button type="button" id="resetFilters" class="reset-btn">
+            🔄 필터 초기화
+          </button>
+        </div>
+      </div>
+
+      <div class="date-range-info" id="dateRangeInfo">
+        📅 표시 기간: <span id="dateRangeText">전체 데이터</span>
+      </div>
+
+      <div class="stats" id="statsContainer">
+        <div class="stat-card">
+          <h3>총 데이터 수</h3>
+          <div class="value" id="totalCount">-</div>
+        </div>
+        <div class="stat-card">
+          <h3>최고가</h3>
+          <div class="value" id="maxPrice">-</div>
+        </div>
+        <div class="stat-card">
+          <h3>최저가</h3>
+          <div class="value" id="minPrice">-</div>
+        </div>
+        <div class="stat-card">
+          <h3>평균 거래량</h3>
+          <div class="value" id="avgVolume">-</div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="loading" id="loadingMessage">데이터를 불러오는 중...</div>
+        <table id="dataTable" style="display: none">
+          <thead>
+            <tr>
+              <th>날짜 (KST)</th>
+              <th>시가</th>
+              <th>고가</th>
+              <th>저가</th>
+              <th>종가</th>
+              <th>가격변동</th>
+              <th>변동률</th>
+              <th>거래량</th>
+              <th>거래대금</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+        <div class="pagination" id="paginationContainer" style="display: none">
+          <button id="prevBtn" onclick="changePage(-1)">이전</button>
+          <span id="pageInfo">1 / 1</span>
+          <button id="nextBtn" onclick="changePage(1)">다음</button>
+        </div>
+      </div>
+
+      <!-- 차트 섹션 -->
+      <div class="chart-section">
+        <div class="chart-buttons">
+          <button class="chart-btn" onclick="showChart('price')" id="priceChartBtn">
+            📈 가격 차트
+          </button>
+          <button class="chart-btn" onclick="showChart('volume')" id="volumeChartBtn">
+            📊 거래량 차트
+          </button>
+          <button class="chart-btn" onclick="showChart('candlestick')" id="candlestickChartBtn">
+            🕯️ 캔들스틱 차트
+          </button>
+        </div>
+
+        <!-- 가격 차트 컨테이너 -->
+        <div class="chart-container" id="priceChartContainer">
+          <div class="chart-title">비트코인 가격 추이 (시가, 고가, 저가, 종가)</div>
+          <div class="chart-wrapper">
+            <canvas id="priceChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 거래량 차트 컨테이너 -->
+        <div class="chart-container" id="volumeChartContainer">
+          <div class="chart-title">비트코인 거래량 추이</div>
+          <div class="chart-wrapper">
+            <canvas id="volumeChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 캔들스틱 차트 컨테이너 -->
+        <div class="chart-container" id="candlestickChartContainer">
+          <div class="chart-title">비트코인 캔들스틱 차트</div>
+          <div class="chart-wrapper">
+            <canvas id="candlestickChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let bitcoinData = [];
+      let filteredData = [];
+      let currentPage = 1;
+      const itemsPerPage = 20;
+
+      // JSON 데이터를 직접 포함 (CORS 문제 해결)
+      const jsonData = [
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-09-04T00:00:00",
+          candle_date_time_kst: "2025-09-04T09:00:00",
+          opening_price: 154890000,
+          high_price: 156515000,
+          low_price: 153093000,
+          trade_price: 155410000,
+          timestamp: 1757030399695,
+          candle_acc_trade_price: 165492086885.6697,
+          candle_acc_trade_volume: 1070.14485107,
+          prev_closing_price: 154890000,
+          change_price: 520000,
+          change_rate: 0.0033572213,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-09-03T00:00:00",
+          candle_date_time_kst: "2025-09-03T09:00:00",
+          opening_price: 154850000,
+          high_price: 156000000,
+          low_price: 154032000,
+          trade_price: 154890000,
+          timestamp: 1756943999098,
+          candle_acc_trade_price: 161272974991.001,
+          candle_acc_trade_volume: 1040.1957758,
+          prev_closing_price: 154850000,
+          change_price: 40000,
+          change_rate: 0.0002583145,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-09-02T00:00:00",
+          candle_date_time_kst: "2025-09-02T09:00:00",
+          opening_price: 152419000,
+          high_price: 155445000,
+          low_price: 150984000,
+          trade_price: 154850000,
+          timestamp: 1756857600026,
+          candle_acc_trade_price: 295205678519.2936,
+          candle_acc_trade_volume: 1920.61439848,
+          prev_closing_price: 152419000,
+          change_price: 2431000,
+          change_rate: 0.0159494551,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-09-01T00:00:00",
+          candle_date_time_kst: "2025-09-01T09:00:00",
+          opening_price: 150700000,
+          high_price: 152789000,
+          low_price: 149000000,
+          trade_price: 152419000,
+          timestamp: 1756771199570,
+          candle_acc_trade_price: 323819779862.1829,
+          candle_acc_trade_volume: 2147.55268421,
+          prev_closing_price: 150700000,
+          change_price: 1719000,
+          change_rate: 0.0114067684,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-31T00:00:00",
+          candle_date_time_kst: "2025-08-31T09:00:00",
+          opening_price: 151734000,
+          high_price: 152960000,
+          low_price: 150447000,
+          trade_price: 150700000,
+          timestamp: 1756684799796,
+          candle_acc_trade_price: 177040311401.05768,
+          candle_acc_trade_volume: 1168.42444947,
+          prev_closing_price: 151734000,
+          change_price: -1034000,
+          change_rate: -0.0068145571,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-30T00:00:00",
+          candle_date_time_kst: "2025-08-30T09:00:00",
+          opening_price: 152262000,
+          high_price: 152267000,
+          low_price: 149704000,
+          trade_price: 151734000,
+          timestamp: 1756598399815,
+          candle_acc_trade_price: 250798178374.15872,
+          candle_acc_trade_volume: 1660.9190379,
+          prev_closing_price: 152262000,
+          change_price: -528000,
+          change_rate: -0.003467707,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-29T00:00:00",
+          candle_date_time_kst: "2025-08-29T09:00:00",
+          opening_price: 156737000,
+          high_price: 157080000,
+          low_price: 151100000,
+          trade_price: 152262000,
+          timestamp: 1756512000042,
+          candle_acc_trade_price: 447565326900.91705,
+          candle_acc_trade_volume: 2916.36749565,
+          prev_closing_price: 156737000,
+          change_price: -4475000,
+          change_rate: -0.0285510122,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-28T00:00:00",
+          candle_date_time_kst: "2025-08-28T09:00:00",
+          opening_price: 155532000,
+          high_price: 157787000,
+          low_price: 155211000,
+          trade_price: 156737000,
+          timestamp: 1756425599385,
+          candle_acc_trade_price: 185118701709.60687,
+          candle_acc_trade_volume: 1179.83398781,
+          prev_closing_price: 155534000,
+          change_price: 1203000,
+          change_rate: 0.0077346432,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-27T00:00:00",
+          candle_date_time_kst: "2025-08-27T09:00:00",
+          opening_price: 156660000,
+          high_price: 157200000,
+          low_price: 154800000,
+          trade_price: 155534000,
+          timestamp: 1756339199501,
+          candle_acc_trade_price: 214886531700.44214,
+          candle_acc_trade_volume: 1378.40369363,
+          prev_closing_price: 156661000,
+          change_price: -1127000,
+          change_rate: -0.0071938772,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-26T00:00:00",
+          candle_date_time_kst: "2025-08-26T09:00:00",
+          opening_price: 155887000,
+          high_price: 157367000,
+          low_price: 153952000,
+          trade_price: 156661000,
+          timestamp: 1756252799844,
+          candle_acc_trade_price: 360004705172.1587,
+          candle_acc_trade_volume: 2318.14300616,
+          prev_closing_price: 155887000,
+          change_price: 774000,
+          change_rate: 0.004965135,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-25T00:00:00",
+          candle_date_time_kst: "2025-08-25T09:00:00",
+          opening_price: 157603000,
+          high_price: 158000000,
+          low_price: 155346000,
+          trade_price: 155887000,
+          timestamp: 1756166399871,
+          candle_acc_trade_price: 404916346020.1862,
+          candle_acc_trade_volume: 2588.2830815,
+          prev_closing_price: 157603000,
+          change_price: -1716000,
+          change_rate: -0.0108881176,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-24T00:00:00",
+          candle_date_time_kst: "2025-08-24T09:00:00",
+          opening_price: 159705000,
+          high_price: 160272000,
+          low_price: 155870000,
+          trade_price: 157603000,
+          timestamp: 1756079999924,
+          candle_acc_trade_price: 344526079834.2278,
+          candle_acc_trade_volume: 2179.0180382,
+          prev_closing_price: 159705000,
+          change_price: -2102000,
+          change_rate: -0.013161767,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-23T00:00:00",
+          candle_date_time_kst: "2025-08-23T09:00:00",
+          opening_price: 161176000,
+          high_price: 161505000,
+          low_price: 159000000,
+          trade_price: 159705000,
+          timestamp: 1755993600013,
+          candle_acc_trade_price: 196915785212.26514,
+          candle_acc_trade_volume: 1231.27745096,
+          prev_closing_price: 161176000,
+          change_price: -1471000,
+          change_rate: -0.009126669,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-22T00:00:00",
+          candle_date_time_kst: "2025-08-22T09:00:00",
+          opening_price: 157737000,
+          high_price: 162688000,
+          low_price: 156647000,
+          trade_price: 161176000,
+          timestamp: 1755907198995,
+          candle_acc_trade_price: 529223634721.8642,
+          candle_acc_trade_volume: 3303.07060192,
+          prev_closing_price: 157737000,
+          change_price: 3439000,
+          change_rate: 0.0218021136,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-21T00:00:00",
+          candle_date_time_kst: "2025-08-21T09:00:00",
+          opening_price: 159237000,
+          high_price: 159900000,
+          low_price: 157280000,
+          trade_price: 157737000,
+          timestamp: 1755820800002,
+          candle_acc_trade_price: 174605018681.81674,
+          candle_acc_trade_volume: 1101.96487624,
+          prev_closing_price: 159149000,
+          change_price: -1412000,
+          change_rate: -0.008872189,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-20T00:00:00",
+          candle_date_time_kst: "2025-08-20T09:00:00",
+          opening_price: 157180000,
+          high_price: 159565000,
+          low_price: 157100000,
+          trade_price: 159149000,
+          timestamp: 1755734399396,
+          candle_acc_trade_price: 267951803613.17224,
+          candle_acc_trade_volume: 1687.53584763,
+          prev_closing_price: 157172000,
+          change_price: 1977000,
+          change_rate: 0.0125785763,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-19T00:00:00",
+          candle_date_time_kst: "2025-08-19T09:00:00",
+          opening_price: 161513000,
+          high_price: 162388000,
+          low_price: 157044000,
+          trade_price: 157172000,
+          timestamp: 1755647999645,
+          candle_acc_trade_price: 348002834141.0647,
+          candle_acc_trade_volume: 2183.55943311,
+          prev_closing_price: 161513000,
+          change_price: -4341000,
+          change_rate: -0.0268770935,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-18T00:00:00",
+          candle_date_time_kst: "2025-08-18T09:00:00",
+          opening_price: 163110000,
+          high_price: 163456000,
+          low_price: 160000000,
+          trade_price: 161513000,
+          timestamp: 1755561599979,
+          candle_acc_trade_price: 326564067873.67126,
+          candle_acc_trade_volume: 2026.55299081,
+          prev_closing_price: 163111000,
+          change_price: -1598000,
+          change_rate: -0.0097970094,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-17T00:00:00",
+          candle_date_time_kst: "2025-08-17T09:00:00",
+          opening_price: 163058000,
+          high_price: 164194000,
+          low_price: 163035000,
+          trade_price: 163111000,
+          timestamp: 1755475199986,
+          candle_acc_trade_price: 118085267517.72812,
+          candle_acc_trade_volume: 721.88384529,
+          prev_closing_price: 163058000,
+          change_price: 53000,
+          change_rate: 0.0003250377,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-16T00:00:00",
+          candle_date_time_kst: "2025-08-16T09:00:00",
+          opening_price: 164122000,
+          high_price: 164374000,
+          low_price: 162685000,
+          trade_price: 163058000,
+          timestamp: 1755388799474,
+          candle_acc_trade_price: 132851703341.47552,
+          candle_acc_trade_volume: 813.45140276,
+          prev_closing_price: 164122000,
+          change_price: -1064000,
+          change_rate: -0.0064829822,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-15T00:00:00",
+          candle_date_time_kst: "2025-08-15T09:00:00",
+          opening_price: 164723000,
+          high_price: 165885000,
+          low_price: 163010000,
+          trade_price: 164122000,
+          timestamp: 1755302399666,
+          candle_acc_trade_price: 227273204589.8375,
+          candle_acc_trade_volume: 1381.99175784,
+          prev_closing_price: 164723000,
+          change_price: -601000,
+          change_rate: -0.0036485494,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-14T00:00:00",
+          candle_date_time_kst: "2025-08-14T09:00:00",
+          opening_price: 168051000,
+          high_price: 169900000,
+          low_price: 162550000,
+          trade_price: 164723000,
+          timestamp: 1755215999920,
+          candle_acc_trade_price: 702365764301.336,
+          candle_acc_trade_volume: 4234.99357777,
+          prev_closing_price: 168051000,
+          change_price: -3328000,
+          change_rate: -0.019803512,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-13T00:00:00",
+          candle_date_time_kst: "2025-08-13T09:00:00",
+          opening_price: 164298000,
+          high_price: 168262000,
+          low_price: 163353000,
+          trade_price: 168051000,
+          timestamp: 1755129599898,
+          candle_acc_trade_price: 425460061845.525,
+          candle_acc_trade_volume: 2570.30205767,
+          prev_closing_price: 164298000,
+          change_price: 3753000,
+          change_rate: 0.0228426396,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-12T00:00:00",
+          candle_date_time_kst: "2025-08-12T09:00:00",
+          opening_price: 164210000,
+          high_price: 164990000,
+          low_price: 163000000,
+          trade_price: 164298000,
+          timestamp: 1755043199938,
+          candle_acc_trade_price: 367191800937.3439,
+          candle_acc_trade_volume: 2238.75147187,
+          prev_closing_price: 164210000,
+          change_price: 88000,
+          change_rate: 0.0005358992,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-11T00:00:00",
+          candle_date_time_kst: "2025-08-11T09:00:00",
+          opening_price: 163860000,
+          high_price: 167000000,
+          low_price: 163350000,
+          trade_price: 164210000,
+          timestamp: 1754956799914,
+          candle_acc_trade_price: 532434548610.83026,
+          candle_acc_trade_volume: 3218.61763068,
+          prev_closing_price: 163859000,
+          change_price: 351000,
+          change_rate: 0.0021420856,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-10T00:00:00",
+          candle_date_time_kst: "2025-08-10T09:00:00",
+          opening_price: 160180000,
+          high_price: 163877000,
+          low_price: 160132000,
+          trade_price: 163859000,
+          timestamp: 1754870399727,
+          candle_acc_trade_price: 379818136741.28656,
+          candle_acc_trade_volume: 2343.22751857,
+          prev_closing_price: 160180000,
+          change_price: 3679000,
+          change_rate: 0.0229679111,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-09T00:00:00",
+          candle_date_time_kst: "2025-08-09T09:00:00",
+          opening_price: 160099000,
+          high_price: 161547000,
+          low_price: 160007000,
+          trade_price: 160180000,
+          timestamp: 1754783999880,
+          candle_acc_trade_price: 224567060686.7797,
+          candle_acc_trade_volume: 1399.2385616,
+          prev_closing_price: 160099000,
+          change_price: 81000,
+          change_rate: 0.000505937,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-08T00:00:00",
+          candle_date_time_kst: "2025-08-08T09:00:00",
+          opening_price: 161853000,
+          high_price: 161994000,
+          low_price: 160008000,
+          trade_price: 160099000,
+          timestamp: 1754697599970,
+          candle_acc_trade_price: 218425515488.15268,
+          candle_acc_trade_volume: 1358.86703435,
+          prev_closing_price: 161853000,
+          change_price: -1754000,
+          change_rate: -0.0108369941,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-07T00:00:00",
+          candle_date_time_kst: "2025-08-07T09:00:00",
+          opening_price: 160000000,
+          high_price: 162000000,
+          low_price: 159524000,
+          trade_price: 161853000,
+          timestamp: 1754611199870,
+          candle_acc_trade_price: 237281789544.67767,
+          candle_acc_trade_volume: 1473.6112066,
+          prev_closing_price: 160000000,
+          change_price: 1853000,
+          change_rate: 0.01158125,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-06T00:00:00",
+          candle_date_time_kst: "2025-08-06T09:00:00",
+          opening_price: 159999000,
+          high_price: 160955000,
+          low_price: 158605000,
+          trade_price: 160000000,
+          timestamp: 1754524799126,
+          candle_acc_trade_price: 142071269508.45157,
+          candle_acc_trade_volume: 888.90291262,
+          prev_closing_price: 159999000,
+          change_price: 1000,
+          change_rate: 6.25e-6,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-05T00:00:00",
+          candle_date_time_kst: "2025-08-05T09:00:00",
+          opening_price: 160333000,
+          high_price: 160571000,
+          low_price: 158206000,
+          trade_price: 159999000,
+          timestamp: 1754438399669,
+          candle_acc_trade_price: 185639281800.3159,
+          candle_acc_trade_volume: 1164.16382517,
+          prev_closing_price: 160332000,
+          change_price: -333000,
+          change_rate: -0.0020769403,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-04T00:00:00",
+          candle_date_time_kst: "2025-08-04T09:00:00",
+          opening_price: 160208000,
+          high_price: 161400000,
+          low_price: 159500000,
+          trade_price: 160332000,
+          timestamp: 1754351999594,
+          candle_acc_trade_price: 168349081038.5815,
+          candle_acc_trade_volume: 1049.67722034,
+          prev_closing_price: 160227000,
+          change_price: 105000,
+          change_rate: 0.0006553203,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-03T00:00:00",
+          candle_date_time_kst: "2025-08-03T09:00:00",
+          opening_price: 157376000,
+          high_price: 160324000,
+          low_price: 156715000,
+          trade_price: 160227000,
+          timestamp: 1754265599919,
+          candle_acc_trade_price: 175444447276.5391,
+          candle_acc_trade_volume: 1104.10129659,
+          prev_closing_price: 157376000,
+          change_price: 2851000,
+          change_rate: 0.0181158499,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-02T00:00:00",
+          candle_date_time_kst: "2025-08-02T09:00:00",
+          opening_price: 158101000,
+          high_price: 159362000,
+          low_price: 157115000,
+          trade_price: 157376000,
+          timestamp: 1754179199569,
+          candle_acc_trade_price: 209568380747.23416,
+          candle_acc_trade_volume: 1322.24037421,
+          prev_closing_price: 158102000,
+          change_price: -726000,
+          change_rate: -0.0045919723,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-08-01T00:00:00",
+          candle_date_time_kst: "2025-08-01T09:00:00",
+          opening_price: 161400000,
+          high_price: 161770000,
+          low_price: 158100000,
+          trade_price: 158102000,
+          timestamp: 1754092799256,
+          candle_acc_trade_price: 457890308339.6215,
+          candle_acc_trade_volume: 2864.49971781,
+          prev_closing_price: 161398000,
+          change_price: -3296000,
+          change_rate: -0.0204215666,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-31T00:00:00",
+          candle_date_time_kst: "2025-07-31T09:00:00",
+          opening_price: 163118000,
+          high_price: 164300000,
+          low_price: 161138000,
+          trade_price: 161398000,
+          timestamp: 1754006398919,
+          candle_acc_trade_price: 238348451037.56705,
+          candle_acc_trade_volume: 1460.98746879,
+          prev_closing_price: 163118000,
+          change_price: -1720000,
+          change_rate: -0.0105445138,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-30T00:00:00",
+          candle_date_time_kst: "2025-07-30T09:00:00",
+          opening_price: 163248000,
+          high_price: 163708000,
+          low_price: 161800000,
+          trade_price: 163118000,
+          timestamp: 1753919999584,
+          candle_acc_trade_price: 196907152981.47147,
+          candle_acc_trade_volume: 1209.08673259,
+          prev_closing_price: 163158000,
+          change_price: -40000,
+          change_rate: -0.0002451611,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-29T00:00:00",
+          candle_date_time_kst: "2025-07-29T09:00:00",
+          opening_price: 162483000,
+          high_price: 163800000,
+          low_price: 162034000,
+          trade_price: 163158000,
+          timestamp: 1753833599704,
+          candle_acc_trade_price: 242634976840.02426,
+          candle_acc_trade_volume: 1487.53432374,
+          prev_closing_price: 162483000,
+          change_price: 675000,
+          change_rate: 0.0041542808,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-28T00:00:00",
+          candle_date_time_kst: "2025-07-28T09:00:00",
+          opening_price: 162548000,
+          high_price: 162985000,
+          low_price: 161391000,
+          trade_price: 162483000,
+          timestamp: 1753747199919,
+          candle_acc_trade_price: 237170267365.09125,
+          candle_acc_trade_volume: 1461.59937798,
+          prev_closing_price: 162717000,
+          change_price: -234000,
+          change_rate: -0.0014380796,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-27T00:00:00",
+          candle_date_time_kst: "2025-07-27T09:00:00",
+          opening_price: 160900000,
+          high_price: 162800000,
+          low_price: 160858000,
+          trade_price: 162717000,
+          timestamp: 1753660799676,
+          candle_acc_trade_price: 171093488765.64722,
+          candle_acc_trade_volume: 1057.82545276,
+          prev_closing_price: 160900000,
+          change_price: 1817000,
+          change_rate: 0.0112927284,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-26T00:00:00",
+          candle_date_time_kst: "2025-07-26T09:00:00",
+          opening_price: 160225000,
+          high_price: 161220000,
+          low_price: 159600000,
+          trade_price: 160900000,
+          timestamp: 1753574399049,
+          candle_acc_trade_price: 126687128917.34134,
+          candle_acc_trade_volume: 789.27787874,
+          prev_closing_price: 160217000,
+          change_price: 683000,
+          change_rate: 0.0042629683,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-25T00:00:00",
+          candle_date_time_kst: "2025-07-25T09:00:00",
+          opening_price: 160938000,
+          high_price: 161239000,
+          low_price: 157746000,
+          trade_price: 160217000,
+          timestamp: 1753487999377,
+          candle_acc_trade_price: 422984662094.9873,
+          candle_acc_trade_volume: 2661.28602167,
+          prev_closing_price: 160928000,
+          change_price: -711000,
+          change_rate: -0.0044181249,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-24T00:00:00",
+          candle_date_time_kst: "2025-07-24T09:00:00",
+          opening_price: 162000000,
+          high_price: 162888000,
+          low_price: 159000000,
+          trade_price: 160928000,
+          timestamp: 1753401599790,
+          candle_acc_trade_price: 346133163078.732,
+          candle_acc_trade_volume: 2151.53591644,
+          prev_closing_price: 161990000,
+          change_price: -1062000,
+          change_rate: -0.0065559602,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-23T00:00:00",
+          candle_date_time_kst: "2025-07-23T09:00:00",
+          opening_price: 162321000,
+          high_price: 162848000,
+          low_price: 159192000,
+          trade_price: 161990000,
+          timestamp: 1753315199780,
+          candle_acc_trade_price: 338036231661.612,
+          candle_acc_trade_volume: 2098.23989394,
+          prev_closing_price: 162321000,
+          change_price: -331000,
+          change_rate: -0.0020391693,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-22T00:00:00",
+          candle_date_time_kst: "2025-07-22T09:00:00",
+          opening_price: 160094000,
+          high_price: 162990000,
+          low_price: 158750000,
+          trade_price: 162321000,
+          timestamp: 1753228799507,
+          candle_acc_trade_price: 439496298750.92377,
+          candle_acc_trade_volume: 2730.46451082,
+          prev_closing_price: 160096000,
+          change_price: 2225000,
+          change_rate: 0.0138979113,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-21T00:00:00",
+          candle_date_time_kst: "2025-07-21T09:00:00",
+          opening_price: 160072000,
+          high_price: 162300000,
+          low_price: 159350000,
+          trade_price: 160096000,
+          timestamp: 1753142399631,
+          candle_acc_trade_price: 318806852512.6161,
+          candle_acc_trade_volume: 1982.32577051,
+          prev_closing_price: 160072000,
+          change_price: 24000,
+          change_rate: 0.0001499325,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-20T00:00:00",
+          candle_date_time_kst: "2025-07-20T09:00:00",
+          opening_price: 161428000,
+          high_price: 162000000,
+          low_price: 159726000,
+          trade_price: 160072000,
+          timestamp: 1753055999498,
+          candle_acc_trade_price: 230283547017.10608,
+          candle_acc_trade_volume: 1429.7828596,
+          prev_closing_price: 161428000,
+          change_price: -1356000,
+          change_rate: -0.0084000297,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-19T00:00:00",
+          candle_date_time_kst: "2025-07-19T09:00:00",
+          opening_price: 161098000,
+          high_price: 162470000,
+          low_price: 160788000,
+          trade_price: 161428000,
+          timestamp: 1752969599759,
+          candle_acc_trade_price: 136213263016.77467,
+          candle_acc_trade_volume: 842.3510109,
+          prev_closing_price: 161100000,
+          change_price: 328000,
+          change_rate: 0.0020360025,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-18T00:00:00",
+          candle_date_time_kst: "2025-07-18T09:00:00",
+          opening_price: 162232000,
+          high_price: 164446000,
+          low_price: 159301000,
+          trade_price: 161100000,
+          timestamp: 1752883199776,
+          candle_acc_trade_price: 449236394018.7995,
+          candle_acc_trade_volume: 2771.33021866,
+          prev_closing_price: 162232000,
+          change_price: -1132000,
+          change_rate: -0.0069776616,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-17T00:00:00",
+          candle_date_time_kst: "2025-07-17T09:00:00",
+          opening_price: 161246000,
+          high_price: 163955000,
+          low_price: 160002000,
+          trade_price: 162232000,
+          timestamp: 1752796799329,
+          candle_acc_trade_price: 362637604713.5304,
+          candle_acc_trade_volume: 2240.66691129,
+          prev_closing_price: 161250000,
+          change_price: 982000,
+          change_rate: 0.0060899225,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-16T00:00:00",
+          candle_date_time_kst: "2025-07-16T09:00:00",
+          opening_price: 160811000,
+          high_price: 163210000,
+          low_price: 160175000,
+          trade_price: 161250000,
+          timestamp: 1752710399248,
+          candle_acc_trade_price: 298152464479.6766,
+          candle_acc_trade_volume: 1841.21876947,
+          prev_closing_price: 160811000,
+          change_price: 439000,
+          change_rate: 0.0027299128,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-15T00:00:00",
+          candle_date_time_kst: "2025-07-15T09:00:00",
+          opening_price: 163923000,
+          high_price: 164010000,
+          low_price: 158658000,
+          trade_price: 160811000,
+          timestamp: 1752623999755,
+          candle_acc_trade_price: 510975587943.66626,
+          candle_acc_trade_volume: 3179.44960753,
+          prev_closing_price: 163923000,
+          change_price: -3112000,
+          change_rate: -0.0189845232,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-14T00:00:00",
+          candle_date_time_kst: "2025-07-14T09:00:00",
+          opening_price: 161740000,
+          high_price: 166800000,
+          low_price: 161357000,
+          trade_price: 163923000,
+          timestamp: 1752537599614,
+          candle_acc_trade_price: 574558921263.0916,
+          candle_acc_trade_volume: 3490.7303061,
+          prev_closing_price: 161740000,
+          change_price: 2183000,
+          change_rate: 0.0134969704,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-13T00:00:00",
+          candle_date_time_kst: "2025-07-13T09:00:00",
+          opening_price: 159683000,
+          high_price: 161754000,
+          low_price: 159450000,
+          trade_price: 161740000,
+          timestamp: 1752451199611,
+          candle_acc_trade_price: 196972458867.92377,
+          candle_acc_trade_volume: 1227.16949574,
+          prev_closing_price: 159681000,
+          change_price: 2059000,
+          change_rate: 0.0128944583,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-12T00:00:00",
+          candle_date_time_kst: "2025-07-12T09:00:00",
+          opening_price: 158187000,
+          high_price: 159952000,
+          low_price: 157200000,
+          trade_price: 159681000,
+          timestamp: 1752364798813,
+          candle_acc_trade_price: 165400817234.24435,
+          candle_acc_trade_volume: 1039.66662029,
+          prev_closing_price: 158187000,
+          change_price: 1494000,
+          change_rate: 0.0094445182,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-11T00:00:00",
+          candle_date_time_kst: "2025-07-11T09:00:00",
+          opening_price: 156517000,
+          high_price: 160744000,
+          low_price: 155000000,
+          trade_price: 158187000,
+          timestamp: 1752278399823,
+          candle_acc_trade_price: 529439887430.5297,
+          candle_acc_trade_volume: 3339.42695041,
+          prev_closing_price: 156519000,
+          change_price: 1668000,
+          change_rate: 0.0106568532,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-10T00:00:00",
+          candle_date_time_kst: "2025-07-10T09:00:00",
+          opening_price: 150750000,
+          high_price: 156960000,
+          low_price: 150200000,
+          trade_price: 156519000,
+          timestamp: 1752191999507,
+          candle_acc_trade_price: 405976570945.23785,
+          candle_acc_trade_volume: 2648.04060121,
+          prev_closing_price: 150701000,
+          change_price: 5818000,
+          change_rate: 0.0386062468,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-09T00:00:00",
+          candle_date_time_kst: "2025-07-09T09:00:00",
+          opening_price: 148302000,
+          high_price: 151479000,
+          low_price: 148000000,
+          trade_price: 150701000,
+          timestamp: 1752105599578,
+          candle_acc_trade_price: 223740339731.93878,
+          candle_acc_trade_volume: 1496.46774735,
+          prev_closing_price: 148302000,
+          change_price: 2399000,
+          change_rate: 0.0161764508,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-08T00:00:00",
+          candle_date_time_kst: "2025-07-08T09:00:00",
+          opening_price: 148100000,
+          high_price: 148890000,
+          low_price: 147100000,
+          trade_price: 148302000,
+          timestamp: 1752019199125,
+          candle_acc_trade_price: 99268948588.57974,
+          candle_acc_trade_volume: 670.29249832,
+          prev_closing_price: 148100000,
+          change_price: 202000,
+          change_rate: 0.0013639433,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-07T00:00:00",
+          candle_date_time_kst: "2025-07-07T09:00:00",
+          opening_price: 148500000,
+          high_price: 149100000,
+          low_price: 147196000,
+          trade_price: 148100000,
+          timestamp: 1751932799103,
+          candle_acc_trade_price: 123245812310.68657,
+          candle_acc_trade_volume: 832.29461691,
+          prev_closing_price: 148500000,
+          change_price: -400000,
+          change_rate: -0.0026936027,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-06T00:00:00",
+          candle_date_time_kst: "2025-07-06T09:00:00",
+          opening_price: 148197000,
+          high_price: 149100000,
+          low_price: 147411000,
+          trade_price: 148500000,
+          timestamp: 1751846399613,
+          candle_acc_trade_price: 85118626816.14578,
+          candle_acc_trade_volume: 574.67732795,
+          prev_closing_price: 148197000,
+          change_price: 303000,
+          change_rate: 0.0020445758,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-05T00:00:00",
+          candle_date_time_kst: "2025-07-05T09:00:00",
+          opening_price: 147798000,
+          high_price: 148400000,
+          low_price: 147655000,
+          trade_price: 148197000,
+          timestamp: 1751759999714,
+          candle_acc_trade_price: 42904283341.56918,
+          candle_acc_trade_volume: 289.92019607,
+          prev_closing_price: 147797000,
+          change_price: 400000,
+          change_rate: 0.0027064149,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-04T00:00:00",
+          candle_date_time_kst: "2025-07-04T09:00:00",
+          opening_price: 148737000,
+          high_price: 149360000,
+          low_price: 146929000,
+          trade_price: 147797000,
+          timestamp: 1751673599367,
+          candle_acc_trade_price: 121383661832.0915,
+          candle_acc_trade_volume: 819.64407007,
+          prev_closing_price: 148737000,
+          change_price: -940000,
+          change_rate: -0.0063198801,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-03T00:00:00",
+          candle_date_time_kst: "2025-07-03T09:00:00",
+          opening_price: 147372000,
+          high_price: 149755000,
+          low_price: 147364000,
+          trade_price: 148737000,
+          timestamp: 1751587199669,
+          candle_acc_trade_price: 175892089704.29065,
+          candle_acc_trade_volume: 1182.41237517,
+          prev_closing_price: 147372000,
+          change_price: 1365000,
+          change_rate: 0.0092622751,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-02T00:00:00",
+          candle_date_time_kst: "2025-07-02T09:00:00",
+          opening_price: 145019000,
+          high_price: 148930000,
+          low_price: 144265000,
+          trade_price: 147372000,
+          timestamp: 1751500799281,
+          candle_acc_trade_price: 199573364700.12863,
+          candle_acc_trade_volume: 1356.69500727,
+          prev_closing_price: 145019000,
+          change_price: 2353000,
+          change_rate: 0.0162254601,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-07-01T00:00:00",
+          candle_date_time_kst: "2025-07-01T09:00:00",
+          opening_price: 145759000,
+          high_price: 146678000,
+          low_price: 144710000,
+          trade_price: 145019000,
+          timestamp: 1751414399260,
+          candle_acc_trade_price: 133282503157.51079,
+          candle_acc_trade_volume: 915.58085007,
+          prev_closing_price: 145759000,
+          change_price: -740000,
+          change_rate: -0.0050768735,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-30T00:00:00",
+          candle_date_time_kst: "2025-06-30T09:00:00",
+          opening_price: 147996000,
+          high_price: 148480000,
+          low_price: 145740000,
+          trade_price: 145759000,
+          timestamp: 1751327999833,
+          candle_acc_trade_price: 138812096716.42776,
+          candle_acc_trade_volume: 944.35761221,
+          prev_closing_price: 147996000,
+          change_price: -2237000,
+          change_rate: -0.0151152734,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-29T00:00:00",
+          candle_date_time_kst: "2025-06-29T09:00:00",
+          opening_price: 147174000,
+          high_price: 148502000,
+          low_price: 147091000,
+          trade_price: 147996000,
+          timestamp: 1751241599517,
+          candle_acc_trade_price: 96188335417.21939,
+          candle_acc_trade_volume: 650.95569906,
+          prev_closing_price: 147174000,
+          change_price: 822000,
+          change_rate: 0.0055852257,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-28T00:00:00",
+          candle_date_time_kst: "2025-06-28T09:00:00",
+          opening_price: 147001000,
+          high_price: 147479000,
+          low_price: 146799000,
+          trade_price: 147174000,
+          timestamp: 1751155199394,
+          candle_acc_trade_price: 42875942272.73871,
+          candle_acc_trade_volume: 291.28203061,
+          prev_closing_price: 147058000,
+          change_price: 116000,
+          change_rate: 0.0007888044,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-27T00:00:00",
+          candle_date_time_kst: "2025-06-27T09:00:00",
+          opening_price: 146868000,
+          high_price: 147628000,
+          low_price: 146000000,
+          trade_price: 147058000,
+          timestamp: 1751068799377,
+          candle_acc_trade_price: 111420804053.70543,
+          candle_acc_trade_volume: 758.41022582,
+          prev_closing_price: 146852000,
+          change_price: 206000,
+          change_rate: 0.0014027729,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-26T00:00:00",
+          candle_date_time_kst: "2025-06-26T09:00:00",
+          opening_price: 147365000,
+          high_price: 148205000,
+          low_price: 146500000,
+          trade_price: 146852000,
+          timestamp: 1750982399490,
+          candle_acc_trade_price: 140102621876.02808,
+          candle_acc_trade_volume: 950.33860524,
+          prev_closing_price: 147365000,
+          change_price: -513000,
+          change_rate: -0.0034811522,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-25T00:00:00",
+          candle_date_time_kst: "2025-06-25T09:00:00",
+          opening_price: 145626000,
+          high_price: 148620000,
+          low_price: 145360000,
+          trade_price: 147365000,
+          timestamp: 1750895999364,
+          candle_acc_trade_price: 193957381788.68948,
+          candle_acc_trade_volume: 1318.58944681,
+          prev_closing_price: 145625000,
+          change_price: 1740000,
+          change_rate: 0.0119484979,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-24T00:00:00",
+          candle_date_time_kst: "2025-06-24T09:00:00",
+          opening_price: 146180000,
+          high_price: 146387000,
+          low_price: 144222000,
+          trade_price: 145625000,
+          timestamp: 1750809599381,
+          candle_acc_trade_price: 185010727139.06448,
+          candle_acc_trade_volume: 1272.92112127,
+          prev_closing_price: 146182000,
+          change_price: -557000,
+          change_rate: -0.0038103186,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-23T00:00:00",
+          candle_date_time_kst: "2025-06-23T09:00:00",
+          opening_price: 140908000,
+          high_price: 147101000,
+          low_price: 139698000,
+          trade_price: 146182000,
+          timestamp: 1750723199727,
+          candle_acc_trade_price: 346783036638.01794,
+          candle_acc_trade_volume: 2422.95238077,
+          prev_closing_price: 140908000,
+          change_price: 5274000,
+          change_rate: 0.0374286769,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-22T00:00:00",
+          candle_date_time_kst: "2025-06-22T09:00:00",
+          opening_price: 142811000,
+          high_price: 144900000,
+          low_price: 137127000,
+          trade_price: 140908000,
+          timestamp: 1750636799326,
+          candle_acc_trade_price: 468510803019.5224,
+          candle_acc_trade_volume: 3335.88004835,
+          prev_closing_price: 142782000,
+          change_price: -1874000,
+          change_rate: -0.0131249037,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-21T00:00:00",
+          candle_date_time_kst: "2025-06-21T09:00:00",
+          opening_price: 143956000,
+          high_price: 144427000,
+          low_price: 141151000,
+          trade_price: 142782000,
+          timestamp: 1750550399270,
+          candle_acc_trade_price: 156253432375.52927,
+          candle_acc_trade_volume: 1092.57854726,
+          prev_closing_price: 143956000,
+          change_price: -1174000,
+          change_rate: -0.0081552697,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-20T00:00:00",
+          candle_date_time_kst: "2025-06-20T09:00:00",
+          opening_price: 144979000,
+          high_price: 146930000,
+          low_price: 143107000,
+          trade_price: 143956000,
+          timestamp: 1750463999677,
+          candle_acc_trade_price: 190608843411.26282,
+          candle_acc_trade_volume: 1315.62127829,
+          prev_closing_price: 144978000,
+          change_price: -1022000,
+          change_rate: -0.0070493454,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-19T00:00:00",
+          candle_date_time_kst: "2025-06-19T09:00:00",
+          opening_price: 145381000,
+          high_price: 146000000,
+          low_price: 144500000,
+          trade_price: 144978000,
+          timestamp: 1750377599534,
+          candle_acc_trade_price: 101842378960.65367,
+          candle_acc_trade_volume: 700.77154255,
+          prev_closing_price: 145380000,
+          change_price: -402000,
+          change_rate: -0.0027651671,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-18T00:00:00",
+          candle_date_time_kst: "2025-06-18T09:00:00",
+          opening_price: 145456000,
+          high_price: 146128000,
+          low_price: 144150000,
+          trade_price: 145380000,
+          timestamp: 1750291199932,
+          candle_acc_trade_price: 126471521428.38004,
+          candle_acc_trade_volume: 870.61801942,
+          prev_closing_price: 145456000,
+          change_price: -76000,
+          change_rate: -0.0005224948,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-17T00:00:00",
+          candle_date_time_kst: "2025-06-17T09:00:00",
+          opening_price: 146661000,
+          high_price: 147957000,
+          low_price: 143900000,
+          trade_price: 145456000,
+          timestamp: 1750204798790,
+          candle_acc_trade_price: 204736154670.58154,
+          candle_acc_trade_volume: 1403.18502313,
+          prev_closing_price: 146673000,
+          change_price: -1217000,
+          change_rate: -0.008297369,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-16T00:00:00",
+          candle_date_time_kst: "2025-06-16T09:00:00",
+          opening_price: 145998000,
+          high_price: 149303000,
+          low_price: 145250000,
+          trade_price: 146673000,
+          timestamp: 1750118400031,
+          candle_acc_trade_price: 207686864067.53534,
+          candle_acc_trade_volume: 1408.77470368,
+          prev_closing_price: 145997000,
+          change_price: 676000,
+          change_rate: 0.0046302321,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-15T00:00:00",
+          candle_date_time_kst: "2025-06-15T09:00:00",
+          opening_price: 146401000,
+          high_price: 147100000,
+          low_price: 145220000,
+          trade_price: 145997000,
+          timestamp: 1750031999548,
+          candle_acc_trade_price: 84200556894.92409,
+          candle_acc_trade_volume: 576.27420172,
+          prev_closing_price: 146401000,
+          change_price: -404000,
+          change_rate: -0.002759544,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-14T00:00:00",
+          candle_date_time_kst: "2025-06-14T09:00:00",
+          opening_price: 147265000,
+          high_price: 147526000,
+          low_price: 145082000,
+          trade_price: 146401000,
+          timestamp: 1749945599941,
+          candle_acc_trade_price: 85403293679.93283,
+          candle_acc_trade_volume: 584.40012937,
+          prev_closing_price: 147266000,
+          change_price: -865000,
+          change_rate: -0.0058737251,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-13T00:00:00",
+          candle_date_time_kst: "2025-06-13T09:00:00",
+          opening_price: 145811000,
+          high_price: 147340000,
+          low_price: 143000000,
+          trade_price: 147266000,
+          timestamp: 1749859198770,
+          candle_acc_trade_price: 318020020070.782,
+          candle_acc_trade_volume: 2195.12537289,
+          prev_closing_price: 145801000,
+          change_price: 1465000,
+          change_rate: 0.0100479421,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-12T00:00:00",
+          candle_date_time_kst: "2025-06-12T09:00:00",
+          opening_price: 149710000,
+          high_price: 149840000,
+          low_price: 145801000,
+          trade_price: 145801000,
+          timestamp: 1749772799765,
+          candle_acc_trade_price: 231786031594.70667,
+          candle_acc_trade_volume: 1570.65133602,
+          prev_closing_price: 149702000,
+          change_price: -3901000,
+          change_rate: -0.0260584361,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-11T00:00:00",
+          candle_date_time_kst: "2025-06-11T09:00:00",
+          opening_price: 150628000,
+          high_price: 151400000,
+          low_price: 148999000,
+          trade_price: 149702000,
+          timestamp: 1749686399172,
+          candle_acc_trade_price: 162452482332.02567,
+          candle_acc_trade_volume: 1080.08422097,
+          prev_closing_price: 150604000,
+          change_price: -902000,
+          change_rate: -0.0059892168,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-10T00:00:00",
+          candle_date_time_kst: "2025-06-10T09:00:00",
+          opening_price: 150330000,
+          high_price: 150992000,
+          low_price: 149060000,
+          trade_price: 150604000,
+          timestamp: 1749599999757,
+          candle_acc_trade_price: 204043686236.05585,
+          candle_acc_trade_volume: 1359.55145588,
+          prev_closing_price: 150330000,
+          change_price: 274000,
+          change_rate: 0.0018226568,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-09T00:00:00",
+          candle_date_time_kst: "2025-06-09T09:00:00",
+          opening_price: 145801000,
+          high_price: 150600000,
+          low_price: 144900000,
+          trade_price: 150330000,
+          timestamp: 1749513599851,
+          candle_acc_trade_price: 237723678751.45724,
+          candle_acc_trade_volume: 1605.82129866,
+          prev_closing_price: 145799000,
+          change_price: 4531000,
+          change_rate: 0.0310770307,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-08T00:00:00",
+          candle_date_time_kst: "2025-06-08T09:00:00",
+          opening_price: 146540000,
+          high_price: 146796000,
+          low_price: 145196000,
+          trade_price: 145799000,
+          timestamp: 1749427199358,
+          candle_acc_trade_price: 80783604293.0407,
+          candle_acc_trade_volume: 553.07283989,
+          prev_closing_price: 146514000,
+          change_price: -715000,
+          change_rate: -0.0048800797,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-07T00:00:00",
+          candle_date_time_kst: "2025-06-07T09:00:00",
+          opening_price: 145196000,
+          high_price: 146895000,
+          low_price: 144601000,
+          trade_price: 146514000,
+          timestamp: 1749340799950,
+          candle_acc_trade_price: 88059534618.2442,
+          candle_acc_trade_volume: 603.1996993,
+          prev_closing_price: 145196000,
+          change_price: 1318000,
+          change_rate: 0.0090773851,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-06T00:00:00",
+          candle_date_time_kst: "2025-06-06T09:00:00",
+          opening_price: 141588000,
+          high_price: 146120000,
+          low_price: 140862000,
+          trade_price: 145196000,
+          timestamp: 1749254399951,
+          candle_acc_trade_price: 183749703863.70224,
+          candle_acc_trade_volume: 1279.12726613,
+          prev_closing_price: 141588000,
+          change_price: 3608000,
+          change_rate: 0.0254823855,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-05T00:00:00",
+          candle_date_time_kst: "2025-06-05T09:00:00",
+          opening_price: 145218000,
+          high_price: 146487000,
+          low_price: 140399000,
+          trade_price: 141588000,
+          timestamp: 1749167999741,
+          candle_acc_trade_price: 364349380568.55396,
+          candle_acc_trade_volume: 2536.94255293,
+          prev_closing_price: 145210000,
+          change_price: -3622000,
+          change_rate: -0.0249431857,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-04T00:00:00",
+          candle_date_time_kst: "2025-06-04T09:00:00",
+          opening_price: 147378000,
+          high_price: 147601000,
+          low_price: 145200000,
+          trade_price: 145210000,
+          timestamp: 1749081599471,
+          candle_acc_trade_price: 161585316986.12125,
+          candle_acc_trade_volume: 1104.00724819,
+          prev_closing_price: 147322000,
+          change_price: -2112000,
+          change_rate: -0.0143359444,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-03T00:00:00",
+          candle_date_time_kst: "2025-06-03T09:00:00",
+          opening_price: 148070000,
+          high_price: 148900000,
+          low_price: 147022000,
+          trade_price: 147322000,
+          timestamp: 1748995199784,
+          candle_acc_trade_price: 144789621000.41092,
+          candle_acc_trade_volume: 979.14377348,
+          prev_closing_price: 148074000,
+          change_price: -752000,
+          change_rate: -0.0050785418,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-02T00:00:00",
+          candle_date_time_kst: "2025-06-02T09:00:00",
+          opening_price: 149102000,
+          high_price: 149166000,
+          low_price: 146209000,
+          trade_price: 148074000,
+          timestamp: 1748908799528,
+          candle_acc_trade_price: 176525957182.84583,
+          candle_acc_trade_volume: 1198.05720248,
+          prev_closing_price: 149100000,
+          change_price: -1026000,
+          change_rate: -0.0068812877,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-06-01T00:00:00",
+          candle_date_time_kst: "2025-06-01T09:00:00",
+          opening_price: 147932000,
+          high_price: 149502000,
+          low_price: 147000000,
+          trade_price: 149100000,
+          timestamp: 1748822399076,
+          candle_acc_trade_price: 112453321042.13853,
+          candle_acc_trade_volume: 759.69668968,
+          prev_closing_price: 147932000,
+          change_price: 1168000,
+          change_rate: 0.0078955196,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-05-31T00:00:00",
+          candle_date_time_kst: "2025-05-31T09:00:00",
+          opening_price: 147044000,
+          high_price: 148700000,
+          low_price: 146042000,
+          trade_price: 147932000,
+          timestamp: 1748735999299,
+          candle_acc_trade_price: 161538591268.91797,
+          candle_acc_trade_volume: 1097.54923406,
+          prev_closing_price: 147044000,
+          change_price: 888000,
+          change_rate: 0.0060390087,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-05-30T00:00:00",
+          candle_date_time_kst: "2025-05-30T09:00:00",
+          opening_price: 147370000,
+          high_price: 149000000,
+          low_price: 146300000,
+          trade_price: 147044000,
+          timestamp: 1748649599487,
+          candle_acc_trade_price: 320759946509.8581,
+          candle_acc_trade_volume: 2171.38535825,
+          prev_closing_price: 147370000,
+          change_price: -326000,
+          change_rate: -0.0022121192,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-05-29T00:00:00",
+          candle_date_time_kst: "2025-05-29T09:00:00",
+          opening_price: 150280000,
+          high_price: 151291000,
+          low_price: 147160000,
+          trade_price: 147370000,
+          timestamp: 1748563199917,
+          candle_acc_trade_price: 256694760678.4399,
+          candle_acc_trade_volume: 1717.72520344,
+          prev_closing_price: 150280000,
+          change_price: -2910000,
+          change_rate: -0.0193638541,
+        },
+        {
+          market: "KRW-BTC",
+          candle_date_time_utc: "2025-05-28T00:00:00",
+          candle_date_time_kst: "2025-05-28T09:00:00",
+          opening_price: 151323000,
+          high_price: 151608000,
+          low_price: 149520000,
+          trade_price: 150280000,
+          timestamp: 1748476799295,
+          candle_acc_trade_price: 171743128104.06027,
+          candle_acc_trade_volume: 1140.46411905,
+          prev_closing_price: 151323000,
+          change_price: -1043000,
+          change_rate: -0.0068925411,
+        },
+      ];
+
+      // 데이터 로드 함수 (CORS 오류 해결)
+      function loadData() {
+        try {
+          bitcoinData = jsonData;
+          filteredData = [...bitcoinData];
+          
+          // 날짜 범위 설정 (데이터의 최소/최대 날짜)
+          setInitialDateRange();
+          
+          displayStats();
+          displayTable();
+          document.getElementById("loadingMessage").style.display = "none";
+          document.getElementById("dataTable").style.display = "table";
+          document.getElementById("paginationContainer").style.display = "flex";
+        } catch (error) {
+          console.error("데이터 로드 실패:", error);
+          document.getElementById("loadingMessage").innerHTML =
+            "데이터 로드에 실패했습니다.";
+        }
+      }
+
+      // 초기 날짜 범위 설정
+      function setInitialDateRange() {
+        const dates = bitcoinData.map(item => new Date(item.candle_date_time_kst.split('T')[0]));
+        const minDate = new Date(Math.min(...dates));
+        const maxDate = new Date(Math.max(...dates));
+        
+        // 날짜 입력 필드의 min, max 값 설정
+        const minDateStr = minDate.toISOString().split('T')[0];
+        const maxDateStr = maxDate.toISOString().split('T')[0];
+        
+        document.getElementById("startDate").min = minDateStr;
+        document.getElementById("startDate").max = maxDateStr;
+        document.getElementById("endDate").min = minDateStr;
+        document.getElementById("endDate").max = maxDateStr;
+        
+        // 플레이스홀더로 사용할 수 있도록 title 속성 추가
+        document.getElementById("startDate").title = `사용 가능 범위: ${minDate.toLocaleDateString('ko-KR')} ~ ${maxDate.toLocaleDateString('ko-KR')}`;
+        document.getElementById("endDate").title = `사용 가능 범위: ${minDate.toLocaleDateString('ko-KR')} ~ ${maxDate.toLocaleDateString('ko-KR')}`;
+      }
+
+      // 통계 정보 표시
+      function displayStats() {
+        const totalCount = filteredData.length;
+        const prices = filteredData.map((item) => item.trade_price);
+        const volumes = filteredData.map(
+          (item) => item.candle_acc_trade_volume
+        );
+
+        const maxPrice = Math.max(...prices);
+        const minPrice = Math.min(...prices);
+        const avgVolume = volumes.reduce((a, b) => a + b, 0) / volumes.length;
+
+        document.getElementById("totalCount").textContent =
+          totalCount.toLocaleString();
+        document.getElementById("maxPrice").textContent =
+          maxPrice.toLocaleString() + "원";
+        document.getElementById("minPrice").textContent =
+          minPrice.toLocaleString() + "원";
+        document.getElementById("avgVolume").textContent = avgVolume.toFixed(2);
+      }
+
+      // 테이블 표시
+      function displayTable() {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageData = filteredData.slice(startIndex, endIndex);
+
+        const tbody = document.getElementById("tableBody");
+        tbody.innerHTML = "";
+
+        pageData.forEach((item) => {
+          const row = document.createElement("tr");
+          const changeClass = item.change_price >= 0 ? "positive" : "negative";
+          const changeSymbol = item.change_price >= 0 ? "+" : "";
+
+          row.innerHTML = `
+                    <td class="date">${new Date(
+                      item.candle_date_time_kst
+                    ).toLocaleDateString("ko-KR")}</td>
+                    <td class="price">${item.opening_price.toLocaleString()}원</td>
+                    <td class="price">${item.high_price.toLocaleString()}원</td>
+                    <td class="price">${item.low_price.toLocaleString()}원</td>
+                    <td class="price">${item.trade_price.toLocaleString()}원</td>
+                    <td class="${changeClass}">${changeSymbol}${item.change_price.toLocaleString()}원</td>
+                    <td class="${changeClass}">${changeSymbol}${(
+            item.change_rate * 100
+          ).toFixed(2)}%</td>
+                    <td class="volume">${item.candle_acc_trade_volume.toFixed(
+                      2
+                    )}</td>
+                    <td class="volume">${Math.round(
+                      item.candle_acc_trade_price / 100000000
+                    ).toLocaleString()}억원</td>
+                `;
+          tbody.appendChild(row);
+        });
+
+        updatePagination();
+      }
+
+      // 페이지네이션 업데이트
+      function updatePagination() {
+        const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+        document.getElementById(
+          "pageInfo"
+        ).textContent = `${currentPage} / ${totalPages}`;
+        document.getElementById("prevBtn").disabled = currentPage === 1;
+        document.getElementById("nextBtn").disabled =
+          currentPage === totalPages;
+      }
+
+      // 페이지 변경
+      function changePage(direction) {
+        const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+        currentPage += direction;
+        if (currentPage < 1) currentPage = 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+        displayTable();
+      }
+
+      // 날짜 범위 필터링
+      function applyDateRangeFilter() {
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
+        
+        let data = [...bitcoinData];
+        let dateRangeText = "전체 데이터";
+
+        // 날짜 범위 필터
+        if (startDate || endDate) {
+          data = data.filter((item) => {
+            const itemDate = new Date(item.candle_date_time_kst.split('T')[0]);
+            let isInRange = true;
+            
+            if (startDate) {
+              const start = new Date(startDate);
+              isInRange = isInRange && itemDate >= start;
+            }
+            
+            if (endDate) {
+              const end = new Date(endDate);
+              isInRange = isInRange && itemDate <= end;
+            }
+            
+            return isInRange;
+          });
+
+          // 날짜 범위 텍스트 생성
+          if (startDate && endDate) {
+            dateRangeText = `${new Date(startDate).toLocaleDateString('ko-KR')} ~ ${new Date(endDate).toLocaleDateString('ko-KR')}`;
+          } else if (startDate) {
+            dateRangeText = `${new Date(startDate).toLocaleDateString('ko-KR')} 이후`;
+          } else if (endDate) {
+            dateRangeText = `${new Date(endDate).toLocaleDateString('ko-KR')} 이전`;
+          }
+        }
+
+        // 날짜 범위 정보 업데이트
+        document.getElementById('dateRangeText').textContent = dateRangeText;
+        document.getElementById('dateRangeInfo').classList.toggle('active', startDate || endDate);
+
+        return data;
+      }
+
+      // 데이터 필터링 및 정렬
+      function filterAndSort() {
+        let data = applyDateRangeFilter();
+
+        // 가격 필터
+        const priceFilter = document.getElementById("priceFilter").value;
+        if (priceFilter) {
+          data = data.filter(
+            (item) => item.trade_price >= parseInt(priceFilter)
+          );
+        }
+
+        // 정렬
+        const sortBy = document.getElementById("sortBy").value;
+        switch (sortBy) {
+          case "date_desc":
+            data.sort(
+              (a, b) =>
+                new Date(b.candle_date_time_kst) -
+                new Date(a.candle_date_time_kst)
+            );
+            break;
+          case "date_asc":
+            data.sort(
+              (a, b) =>
+                new Date(a.candle_date_time_kst) -
+                new Date(b.candle_date_time_kst)
+            );
+            break;
+          case "price_high":
+            data.sort((a, b) => b.trade_price - a.trade_price);
+            break;
+          case "price_low":
+            data.sort((a, b) => a.trade_price - b.trade_price);
+            break;
+          case "volume_high":
+            data.sort(
+              (a, b) => b.candle_acc_trade_volume - a.candle_acc_trade_volume
+            );
+            break;
+          case "volume_low":
+            data.sort(
+              (a, b) => a.candle_acc_trade_volume - b.candle_acc_trade_volume
+            );
+            break;
+        }
+
+        filteredData = data;
+        currentPage = 1;
+        displayStats();
+        displayTable();
+      }
+
+      // 필터 초기화
+      function resetFilters() {
+        document.getElementById("startDate").value = "";
+        document.getElementById("endDate").value = "";
+        document.getElementById("priceFilter").value = "";
+        document.getElementById("sortBy").value = "date_desc";
+        
+        filterAndSort();
+      }
+
+      // 이벤트 리스너 등록
+      document
+        .getElementById("applyDateRange")
+        .addEventListener("click", filterAndSort);
+      document
+        .getElementById("resetFilters")
+        .addEventListener("click", resetFilters);
+      document
+        .getElementById("sortBy")
+        .addEventListener("change", filterAndSort);
+      document
+        .getElementById("priceFilter")
+        .addEventListener("input", filterAndSort);
+      
+      // 날짜 입력 시 엔터키로도 적용 가능
+      document.getElementById("startDate").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+          filterAndSort();
+        }
+      });
+      document.getElementById("endDate").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+          filterAndSort();
+        }
+      });
+
+      // 차트 관련 변수
+      let priceChart = null;
+      let volumeChart = null;
+      let candlestickChart = null;
+
+      // 차트 표시 함수
+      function showChart(chartType) {
+        // 모든 버튼과 컨테이너 비활성화
+        document.querySelectorAll('.chart-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.chart-container').forEach(container => container.classList.remove('active'));
+
+        // 선택된 버튼과 컨테이너 활성화
+        document.getElementById(chartType + 'ChartBtn').classList.add('active');
+        document.getElementById(chartType + 'ChartContainer').classList.add('active');
+
+        // 차트 생성
+        switch(chartType) {
+          case 'price':
+            createPriceChart();
+            break;
+          case 'volume':
+            createVolumeChart();
+            break;
+          case 'candlestick':
+            createCandlestickChart();
+            break;
+        }
+      }
+
+      // 가격 차트 생성
+      function createPriceChart() {
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        
+        if (priceChart) {
+          priceChart.destroy();
+        }
+
+        const sortedData = [...filteredData].sort((a, b) => 
+          new Date(a.candle_date_time_kst) - new Date(b.candle_date_time_kst)
+        );
+
+        const labels = sortedData.map(item => 
+          new Date(item.candle_date_time_kst).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+        );
+
+        priceChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: '시가',
+                data: sortedData.map(item => item.opening_price),
+                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.1
+              },
+              {
+                label: '고가',
+                data: sortedData.map(item => item.high_price),
+                borderColor: 'rgba(255, 99, 132, 1)',
+                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.1
+              },
+              {
+                label: '저가',
+                data: sortedData.map(item => item.low_price),
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.1
+              },
+              {
+                label: '종가',
+                data: sortedData.map(item => item.trade_price),
+                borderColor: 'rgba(153, 102, 255, 1)',
+                backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                borderWidth: 3,
+                fill: false,
+                tension: 0.1
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              intersect: false,
+              mode: 'index'
+            },
+            plugins: {
+              legend: {
+                position: 'top'
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + '원';
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: false,
+                ticks: {
+                  callback: function(value) {
+                    return (value / 1000000).toFixed(0) + 'M원';
+                  }
+                }
+              },
+              x: {
+                ticks: {
+                  maxTicksLimit: 20
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // 거래량 차트 생성
+      function createVolumeChart() {
+        const ctx = document.getElementById('volumeChart').getContext('2d');
+        
+        if (volumeChart) {
+          volumeChart.destroy();
+        }
+
+        const sortedData = [...filteredData].sort((a, b) => 
+          new Date(a.candle_date_time_kst) - new Date(b.candle_date_time_kst)
+        );
+
+        const labels = sortedData.map(item => 
+          new Date(item.candle_date_time_kst).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+        );
+
+        volumeChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: '거래량',
+                data: sortedData.map(item => item.candle_acc_trade_volume),
+                backgroundColor: sortedData.map(item => 
+                  item.change_price >= 0 ? 'rgba(231, 76, 60, 0.7)' : 'rgba(52, 152, 219, 0.7)'
+                ),
+                borderColor: sortedData.map(item => 
+                  item.change_price >= 0 ? 'rgba(231, 76, 60, 1)' : 'rgba(52, 152, 219, 1)'
+                ),
+                borderWidth: 1
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'top'
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return '거래량: ' + context.parsed.y.toFixed(2);
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: function(value) {
+                    return value.toFixed(0);
+                  }
+                }
+              },
+              x: {
+                ticks: {
+                  maxTicksLimit: 20
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // 캔들스틱 차트 생성 (간단한 형태로 구현)
+      function createCandlestickChart() {
+        const ctx = document.getElementById('candlestickChart').getContext('2d');
+        
+        if (candlestickChart) {
+          candlestickChart.destroy();
+        }
+
+        const sortedData = [...filteredData].sort((a, b) => 
+          new Date(a.candle_date_time_kst) - new Date(b.candle_date_time_kst)
+        );
+
+        const labels = sortedData.map(item => 
+          new Date(item.candle_date_time_kst).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+        );
+
+        // 캔들스틱을 간단한 바 차트로 표현
+        candlestickChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: '가격 범위 (고가-저가)',
+                data: sortedData.map(item => item.high_price - item.low_price),
+                backgroundColor: sortedData.map(item => 
+                  item.change_price >= 0 ? 'rgba(231, 76, 60, 0.7)' : 'rgba(52, 152, 219, 0.7)'
+                ),
+                borderColor: sortedData.map(item => 
+                  item.change_price >= 0 ? 'rgba(231, 76, 60, 1)' : 'rgba(52, 152, 219, 1)'
+                ),
+                borderWidth: 1
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'top'
+              },
+              tooltip: {
+                callbacks: {
+                  title: function(context) {
+                    const dataIndex = context[0].dataIndex;
+                    const item = sortedData[dataIndex];
+                    return new Date(item.candle_date_time_kst).toLocaleDateString('ko-KR');
+                  },
+                  beforeBody: function(context) {
+                    const dataIndex = context[0].dataIndex;
+                    const item = sortedData[dataIndex];
+                    return [
+                      '시가: ' + item.opening_price.toLocaleString() + '원',
+                      '고가: ' + item.high_price.toLocaleString() + '원',
+                      '저가: ' + item.low_price.toLocaleString() + '원',
+                      '종가: ' + item.trade_price.toLocaleString() + '원',
+                      '변동: ' + (item.change_price >= 0 ? '+' : '') + item.change_price.toLocaleString() + '원 (' + (item.change_rate * 100).toFixed(2) + '%)'
+                    ];
+                  },
+                  label: function(context) {
+                    return '가격 범위: ' + context.parsed.y.toLocaleString() + '원';
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: function(value) {
+                    return (value / 1000).toFixed(0) + 'K원';
+                  }
+                }
+              },
+              x: {
+                ticks: {
+                  maxTicksLimit: 20
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // 기존 filterAndSort 함수 수정 (차트 업데이트 포함)
+      const originalFilterAndSort = filterAndSort;
+      filterAndSort = function() {
+        originalFilterAndSort();
+        
+        // 활성화된 차트가 있으면 업데이트
+        const activeBtn = document.querySelector('.chart-btn.active');
+        if (activeBtn) {
+          const chartType = activeBtn.id.replace('ChartBtn', '');
+          showChart(chartType);
+        }
+      };
+
+      // 초기 데이터 로드
+      loadData();
+    </script>
+  </body>
+</html>
