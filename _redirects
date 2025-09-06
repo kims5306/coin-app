@@ -1,0 +1,6 @@
+# Redirect root to main app
+/ /upbit_analyzer.html 200
+
+# Handle SPA routing
+/upbit_analyzer.html /upbit_analyzer.html 200
+/*    /upbit_analyzer.html   200
